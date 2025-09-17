@@ -1,47 +1,0 @@
-<!DOCTYPE html>
-<html lang='fa'>
-<head>
-<meta charset='UTF-8'>
-<meta name='viewport' content='width=device-width, initial-scale=1.0'>
-<title>کاتالوگ فروش</title>
-<link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.rtl.min.css' rel='stylesheet'>
-<link href='style.css' rel='stylesheet'>
-</head>
-<body>
-<header class='bg-success text-white p-3'>
-  <h1 class='text-center'>کاتالوگ فروشگاه</h1>
-</header>
-<div class='container my-4'>
-  <input type='text' id='searchInput' class='form-control mb-3' placeholder='جستجو...'>
-  <div id='productList' class='row g-4'>
-    <!-- محصولات اینجا بارگذاری می‌شوند -->
-  </div>
-</div>
-<div id='cartFloating' class='cart-floating bg-warning p-2'>
-  🛒 <span id='cartCount'>0</span> کالا - مجموع: <span id='cartTotal'>0</span> تومان
-</div>
-<div id='cartModal' class='modal fade'>
-  <div class='modal-dialog modal-lg'>
-    <div class='modal-content'>
-      <div class='modal-header'>
-        <h5 class='modal-title'>سبد خرید</h5>
-        <button type='button' class='btn-close' data-bs-dismiss='modal'></button>
-      </div>
-      <div class='modal-body'>
-        <table class='table'>
-          <thead><tr><th>محصول</th><th>قیمت</th><th>تعداد</th><th>جمع</th></tr></thead>
-          <tbody id='cartItems'></tbody>
-        </table>
-      </div>
-      <div class='modal-footer'>
-        <a id='whatsappOrder' class='btn btn-success'>ارسال در واتساپ</a>
-        <a id='rubikaOrder' class='btn btn-primary'>ارسال در روبیکا</a>
-        <button class='btn btn-secondary' data-bs-dismiss='modal'>بستن</button>
-      </div>
-    </div>
-  </div>
-</div>
-<script src='https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js'></script>
-<script src='script.js'></script>
-</body>
-</html>
