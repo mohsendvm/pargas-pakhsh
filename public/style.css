@@ -1,0 +1,9 @@
+body {direction: rtl; font-family: sans-serif; background: #f8f8f8; margin:0;}
+header {background: teal; color: white; text-align: center; padding: 1rem;}
+#view-section {padding: 1rem; display: flex; flex-wrap: wrap; gap: 1rem;}
+.card {background:white; padding:1rem; border-radius:8px; box-shadow:0 2px 5px rgba(0,0,0,0.1); width:200px;}
+.card img {max-width:100%; border-radius:5px;}
+button {background:teal; color:#fff; border:none; padding:0.4rem 0.8rem; cursor:pointer; border-radius:4px;}
+#cart-section {position: fixed; top: 80px; right: 0; background: white; padding: 1rem; width: 250px; height: calc(100% - 80px); overflow-y: auto; box-shadow: -2px 0 5px rgba(0,0,0,0.1);}
+#cart-list {list-style:none; padding:0;}
+#cart-list li {display:flex; justify-content:space-between; border-bottom:1px solid #ddd; padding:0.3rem 0;}

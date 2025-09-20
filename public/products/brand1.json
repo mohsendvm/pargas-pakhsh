@@ -1,0 +1,16 @@
+[
+  {
+    "id": "brand1_prod1",
+    "name": "محصول ساده",
+    "price": 100000,
+    "hasCodes": false,
+    "image": "images/products/prod1.jpg"
+  },
+  {
+    "id": "brand1_prod2",
+    "name": "محصول کددار",
+    "price": 150000,
+    "hasCodes": true,
+    "image": "images/products/prod2.jpg"
+  }
+]
