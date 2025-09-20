@@ -32,7 +32,9 @@ function loadProducts(brandId){
 }
 
 function loadCodes(prodId, page=1){
- fetch(`codes/${prodId}.json`).then(r=>r.json()).then(data=>{
+ fetch(codes/${prodId}.json)
+    .then(r => r.json())
+    .then(data => {
   const perPage=6;
   const start=(page-1)*perPage;
   const codesPage=data.slice(start,start+perPage);
