@@ -1,0 +1,11 @@
+{
+    "name": "pargas-pakhsh-final-pro-step3-ui-no-code",
+    "version": "1.0.0",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js"
+    },
+    "dependencies": {
+        "express": "^4.18.2"
+    }
+}

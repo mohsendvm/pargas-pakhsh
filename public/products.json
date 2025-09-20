@@ -1,0 +1,30 @@
+[
+    {
+        "code": "BR01-CAT01-001",
+        "name": "محصول برند ۱ - کددار",
+        "price": 120000,
+        "unit": "عدد",
+        "brand": "برند ۱",
+        "category": "دسته A",
+        "image": "products/sample1.jpg",
+        "description": "توضیحات تست برای محصول کددار.",
+        "related_tags": [
+            "شیرینی",
+            "سوغات"
+        ]
+    },
+    {
+        "code": "NC-BR02-CAT02-001",
+        "name": "محصول بدون کد برند ۲",
+        "price": 85000,
+        "unit": "بسته",
+        "brand": "برند ۲",
+        "category": "دسته B",
+        "image": "products/sample2.jpg",
+        "description": "این محصول بدون کد است و کد موقت دارد.",
+        "related_tags": [
+            "خشکبار",
+            "آجیلی"
+        ]
+    }
+]
