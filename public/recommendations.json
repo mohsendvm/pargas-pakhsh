@@ -1,0 +1,18 @@
+{
+  "brand1_prod2": [
+    {
+      "id": "brand1_prod1"
+    },
+    {
+      "id": "brand2_prod1"
+    }
+  ],
+  "brand2_prod1": [
+    {
+      "id": "brand2_prod2"
+    },
+    {
+      "id": "brand1_prod1"
+    }
+  ]
+}

@@ -1,0 +1,1 @@
+fetch('brands.json').then(r=>r.json()).then(data=>console.log('Brands:', data));

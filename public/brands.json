@@ -1,0 +1,12 @@
+[
+  {
+    "id": "brand1",
+    "name": "برند یک",
+    "image": "images/brands/brand1.jpg"
+  },
+  {
+    "id": "brand2",
+    "name": "برند دو",
+    "image": "images/brands/brand2.jpg"
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "brand1_prod2": {
+    "type": "discount",
+    "value": "20%",
+    "note": "فقط تا پایان هفته"
+  },
+  "brand2_prod1": {
+    "type": "gift",
+    "value": "هدیه لیوان",
+    "note": "برای خرید بالای 5 عدد"
+  }
+}
