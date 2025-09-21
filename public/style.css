@@ -10,6 +10,7 @@ h1 {
   text-align: center;
   border-bottom: 3px solid #0077cc;
   color: #333;
+  padding: 10px 0;
 }
 
 #brand-list {
@@ -28,7 +29,10 @@ h1 {
   transition: all 0.3s ease;
 }
 
-#brand-list button:hover { background-color: #005fa3; transform: scale(1.05); }
+#brand-list button:hover {
+  background-color: #005fa3;
+  transform: scale(1.05);
+}
 
 #product-list {
   display: grid;
@@ -43,19 +47,23 @@ h1 {
   padding: 10px;
   border-radius: 5px;
   text-align: center;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
 }
 
 #product-list button {
   background-color: #ff6600;
   border: none;
-  padding: 5px 10px;
+  padding: 7px 14px;
   margin-top: 8px;
   color: #fff;
-  border-radius: 3px;
+  border-radius: 4px;
   cursor: pointer;
+  transition: background 0.3s ease;
 }
 
-#product-list button:hover { background-color: #e95500; }
+#product-list button:hover {
+  background-color: #e95500;
+}
 
 #cart-list {
   margin-top: 20px;
@@ -69,9 +77,33 @@ h1 {
   background-color: #d9534f;
   border: none;
   color: #fff;
-  padding: 2px 6px;
+  padding: 3px 8px;
   margin: 0 3px;
   border-radius: 3px;
+  cursor: pointer;
 }
 
-#cart-list button:hover { background-color: #c9302c; }
+#cart-list button:hover {
+  background-color: #c9302c;
+}
+
+/* موبایل */
+@media (max-width: 768px) {
+  #brand-list button,
+  #product-list button,
+  #cart-list button,
+  .order-btn {
+    width: 100%;
+    margin-bottom: 5px;
+  }
+  #product-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* دسکتاپ */
+@media (min-width: 769px) {
+  #product-list {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  }
+}
