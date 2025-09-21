@@ -1,1 +1,77 @@
-body {font-family: tahoma; direction: rtl;} img {max-width: 100px;}
+body {
+  font-family: 'Tahoma', sans-serif;
+  direction: rtl;
+  background-color: #f4f6f9;
+  margin: 0;
+  padding: 0 10px;
+}
+
+h1 {
+  text-align: center;
+  border-bottom: 3px solid #0077cc;
+  color: #333;
+}
+
+#brand-list {
+  text-align: center;
+  padding: 15px 0;
+}
+
+#brand-list button {
+  background-color: #0077cc;
+  color: #fff;
+  border: none;
+  padding: 10px 20px;
+  margin: 5px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+#brand-list button:hover { background-color: #005fa3; transform: scale(1.05); }
+
+#product-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 15px;
+  margin-top: 20px;
+}
+
+#product-list div {
+  background: #fff;
+  border: 1px solid #ddd;
+  padding: 10px;
+  border-radius: 5px;
+  text-align: center;
+}
+
+#product-list button {
+  background-color: #ff6600;
+  border: none;
+  padding: 5px 10px;
+  margin-top: 8px;
+  color: #fff;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+#product-list button:hover { background-color: #e95500; }
+
+#cart-list {
+  margin-top: 20px;
+  padding: 10px;
+  background-color: #e9f7ef;
+  border: 1px solid #c3e6cb;
+  border-radius: 5px;
+}
+
+#cart-list button {
+  background-color: #d9534f;
+  border: none;
+  color: #fff;
+  padding: 2px 6px;
+  margin: 0 3px;
+  border-radius: 3px;
+}
+
+#cart-list button:hover { background-color: #c9302c; }
