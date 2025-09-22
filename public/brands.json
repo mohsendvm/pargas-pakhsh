@@ -1,0 +1,17 @@
+[
+  {
+    "id": "brand1",
+    "name": "محصولات کوهستان",
+    "logo": "images/brands/brand1.png"
+  },
+  {
+    "id": "brand2",
+    "name": "صنایع غذایی برکت",
+    "logo": "images/brands/brand2.png"
+  },
+  {
+    "id": "brand3",
+    "name": "لوازم خانگی سپهر",
+    "logo": "images/brands/brand3.png"
+  }
+]
