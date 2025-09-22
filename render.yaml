@@ -1,0 +1,7 @@
+services:
+- type: web
+  name: pargas-pakhsh-final-pro-clean
+  env: node
+  buildCommand: npm install
+  startCommand: npm start
+  plan: free

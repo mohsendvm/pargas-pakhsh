@@ -1,0 +1,17 @@
+[
+  {
+    "id": "brand1",
+    "name": "برند اول",
+    "logo": "images/brand1_logo.png"
+  },
+  {
+    "id": "brand2",
+    "name": "برند دوم",
+    "logo": "images/brand2_logo.png"
+  },
+  {
+    "id": "brand3",
+    "name": "برند سوم",
+    "logo": "images/brand3_logo.png"
+  }
+]
