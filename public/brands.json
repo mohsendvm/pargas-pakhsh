@@ -2,17 +2,16 @@
   {
     "id": "brand1",
     "name": "محصولات کوهستان",
-    "logo": "https://via.placeholder.com/120x80.png?text=brand1"
+    "logo": "images/brands/brand1.png"
   },
   {
     "id": "brand2",
     "name": "صنایع غذایی برکت",
-    "logo": "https://via.placeholder.com/120x80.png?text=brand2"
+    "logo": "images/brands/brand2.png"
   },
   {
     "id": "brand3",
     "name": "لوازم خانگی سپهر",
-    "logo": "https://via.placeholder.com/120x80.png?text=brand3"
+    "logo": "images/brands/brand3.png"
   }
 ]
-
