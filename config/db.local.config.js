@@ -2,18 +2,23 @@
 require('dotenv').config();
 const sql = require('mssql');
 
+// ⚙️ تنظیمات اتصال به MSSQL سپیدار از طریق متغیرهای .env
 const config = {
-  user: process.env.MSSQL_USER,
-  password: process.env.MSSQL_PASSWORD,
-  server: process.env.MSSQL_SERVER,
-  database: process.env.MSSQL_DATABASE,
-  port: parseInt(process.env.MSSQL_PORT, 10),
+  user: process.env.MSSQL_USER,           // نام کاربری مثلاً: sa
+  password: process.env.MSSQL_PASSWORD,   // رمز SQL
+  server: process.env.MSSQL_SERVER,       // IP داخلی یا عمومی، مثلاً: 192.168.1.100
+  database: process.env.MSSQL_DATABASE,   // نام دیتابیس سپیدار
+  port: parseInt(process.env.MSSQL_PORT, 10) || 1433,
+
   options: {
-    encrypt: false, // سپیدار SSL نیاز ندارد
-    trustServerCertificate: true,
+    encrypt: false,                 // 💡 مهم: غیرفعال سازی کامل SSL/TLS
+    trustServerCertificate: true,   // 💡 اجازه اتصال بدون گواهی SSL معتبر
+    enableArithAbort: true,         // پایداری در پردازش تراکنش‌ها
+    connectionTimeout: 30000        // زمان انتظار (۳۰ ثانیه)
   },
 };
 
+// 🔌 تابع اتصال به دیتابیس سپیدار
 const connectSepidar = async () => {
   try {
     await sql.connect(config);
@@ -23,4 +28,6 @@ const connectSepidar = async () => {
   }
 };
 
+// 📤 خروج تابع برای استفاده در server.js
 module.exports = connectSepidar;
+
