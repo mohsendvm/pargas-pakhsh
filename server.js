@@ -7,21 +7,28 @@ require('dotenv').config(); // برای خواندن PORT و MONGO_URI
 // 📌 اتصال به پایگاه داده
 const connectDB = require('./config/db.config');
 
-// اتصال به SQL Server سپیدار
+// اتصال SQL Server سپیدار
 const sql = require('mssql');
 
 const mssqlConfig = {
-  user: process.env.MSSQL_USER,
-  password: process.env.MSSQL_PASSWORD,
-  server: process.env.MSSQL_SERVER,
-  database: process.env.MSSQL_DATABASE,
-  port: parseInt(process.env.MSSQL_PORT, 10),
-  options: { trustServerCertificate: true }
+    user: process.env.MSSQL_USER,
+    password: process.env.MSSQL_PASSWORD,
+    server: process.env.MSSQL_SERVER,
+    database: process.env.MSSQL_DATABASE,
+    port: parseInt(process.env.MSSQL_PORT, 10),
+    options: {
+        encrypt: false, // سپیدار نیاز به SSL ندارد
+        trustServerCertificate: true, // برای جلوگیری از خطای گواهی
+        cryptoCredentialsDetails: { minVersion: 'TLSv1' }, // برای سازگاری با SQL 2008R2
+        enableArithAbort: true // جلوگیری از خطای داخلی در نسخه‌های قدیمی
+    }
 };
 
 sql.connect(mssqlConfig)
-  .then(() => console.log('✅ MSSQL (Sepidar) Connected!'))
-  .catch(err => console.error('❌ MSSQL Connection Error:', err));
+    .then(() => console.log('✅ MSSQL (Sepidar) Connected!'))
+    .catch(err => console.error('❌ MSSQL Connection Error:', err));
+
+
 
 // 📌 ساخت برنامه Express
 const app = express();
@@ -53,5 +60,4 @@ connectDB().then(() => {
 }).catch(err => {
   console.error(`❌ Database connection failed: ${err.message}`);
 });
-
 
