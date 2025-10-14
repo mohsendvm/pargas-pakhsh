@@ -1,63 +1,78 @@
-// server.js
-const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
-require('dotenv').config(); // برای خواندن PORT و MONGO_URI
+// ---------------------------------------------------------------------
+// ✅ بخش ۱: وارد کردن ماژول‌ها و تنظیمات اولیه
+// ---------------------------------------------------------------------
+const express = require('express')
+const cors = require('cors')
+const bodyParser = require('body-parser')
+require('dotenv').config()
 
-// 📌 اتصال به پایگاه داده
-const connectDB = require('./config/db.config');
+// اتصال به MongoDB (از فایل config/db.config.js)
+const connectDB = require('./config/db.config')
 
-// اتصال SQL Server سپیدار
-const sql = require('mssql');
+// 💡 ماژول اتصال پایدار MSSQL (شامل Auto-Reconnect)
+const { connectToSQL } = require('./dbConnect')
 
-const mssqlConfig = {
-    user: process.env.MSSQL_USER,
-    password: process.env.MSSQL_PASSWORD,
-    server: process.env.MSSQL_SERVER,
-    database: process.env.MSSQL_DATABASE,
-    port: parseInt(process.env.MSSQL_PORT, 10),
-    options: {
-        encrypt: false, // سپیدار نیاز به SSL ندارد
-        trustServerCertificate: true, // برای جلوگیری از خطای گواهی
-        cryptoCredentialsDetails: { minVersion: 'TLSv1' }, // برای سازگاری با SQL 2008R2
-        enableArithAbort: true // جلوگیری از خطای داخلی در نسخه‌های قدیمی
-    }
-};
+// برای پینگ خودکار ضد Sleep
+const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args))
 
-sql.connect(mssqlConfig)
-    .then(() => console.log('✅ MSSQL (Sepidar) Connected!'))
-    .catch(err => console.error('❌ MSSQL Connection Error:', err));
+// ساخت برنامه Express
+const app = express()
+app.use(cors())
+app.use(bodyParser.json())
 
+// ---------------------------------------------------------------------
+// ✅ بخش ۲: اتصال اولیه MSSQL و مسیرهای سلامتی
+// ---------------------------------------------------------------------
+connectToSQL() // در شروع سرور، اتصال به سپیدار برقرار شود
 
-
-// 📌 ساخت برنامه Express
-const app = express();
-
-// 📌 میان‌افزارها (Middleware)
-app.use(cors());
-app.use(bodyParser.json()); // برای خواندن داده‌های JSON از درخواست‌ها
-
-// 🟢 مسیر تست
+// مسیر تست اصلی
 app.get('/', (req, res) => {
-  res.send('✅ Server is running and DB Connected!');
-});
+  res.send('✅ Server is running and MSSQL (Sepidar) is auto-managed!')
+})
 
-// 📌 مسیرهای API
-const productRoutes = require('./routes/product.routes');
-const orderRoutes = require('./routes/order.routes');
+// مسیر سلامت برای مانیتورینگ Render
+app.get('/status', (req, res) => {
+  res.status(200).json({
+    uptime_seconds: process.uptime(),
+    sql_status: global.sqlConnected ? '🟢 MSSQL Connected' : '🔴 MSSQL Disconnected',
+    checked_at: new Date().toLocaleString('fa-IR')
+  })
+})
 
-app.use('/api/products', productRoutes);
-app.use('/api/orders', orderRoutes);
+// ---------------------------------------------------------------------
+// ✅ بخش ۳: پینگ خودکار برای جلوگیری از Sleep در Render Free
+// ---------------------------------------------------------------------
+setInterval(async () => {
+  try {
+    // URL دامنه‌ی واقعی پروژه در Render
+    const pingUrl = process.env.PING_URL || 'https://pargas-pakhsh.onrender.com/status'
+    const res = await fetch(pingUrl)
+    console.log('⏱️ Ping sent to Render:', res.status)
+  } catch (err) {
+    console.log('⚠️ Ping failed:', err.message)
+  }
+}, 9 * 60 * 1000) // هر ۹ دقیقه
 
-// 📌 پورت اجرا
-const PORT = process.env.PORT || 3000;
+// ---------------------------------------------------------------------
+// ✅ بخش ۴: مسیرهای API پروژه (همان‌های موجود)
+// ---------------------------------------------------------------------
+const productRoutes = require('./routes/product.routes')
+const orderRoutes = require('./routes/order.routes')
+app.use('/api/products', productRoutes)
+app.use('/api/orders', orderRoutes)
 
-// 📌 اتصال به دیتابیس و اجرای سرور
-connectDB().then(() => {
-  app.listen(PORT, () => {
-    console.log(`🟢 Server running on port ${PORT}`);
-  });
-}).catch(err => {
-  console.error(`❌ Database connection failed: ${err.message}`);
-});
+// ---------------------------------------------------------------------
+// ✅ بخش ۵: اجرای سرور و اتصال MongoDB
+// ---------------------------------------------------------------------
+const PORT = process.env.PORT || 3000
+
+connectDB()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`🟢 Server running on port ${PORT}`)
+    })
+  })
+  .catch(err => {
+    console.error(`❌ MongoDB connection failed: ${err.message}`)
+  })
 
