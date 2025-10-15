@@ -4,9 +4,9 @@ const sql = require('mssql');
 
 // ⚙️ تنظیمات اتصال به MSSQL سپیدار از طریق متغیرهای .env
 const config = {
-  user: process.env.MSSQL_USER,           // نام کاربری مثلاً: sa
+  user: process.env.MSSQL_USER,           // نام کاربری مثلاً: 
   password: process.env.MSSQL_PASSWORD,   // رمز SQL
-  server: process.env.MSSQL_SERVER,       // IP داخلی یا عمومی، مثلاً: 192.168.1.100
+  server: process.env.MSSQL_HOST,       // IP داخلی یا عمومی، مثلاً: 
   database: process.env.MSSQL_DATABASE,   // نام دیتابیس سپیدار
   port: parseInt(process.env.MSSQL_PORT, 10) || 1433,
 
@@ -30,4 +30,5 @@ const connectSepidar = async () => {
 
 // 📤 خروج تابع برای استفاده در server.js
 module.exports = connectSepidar;
+
 
