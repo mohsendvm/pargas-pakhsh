@@ -5,7 +5,7 @@ let pool = null // حافظه‌ی اتصال فعال
 const config = {
   user: process.env.MSSQL_USER,
   password: process.env.MSSQL_PASSWORD,
-  server: process.env.MSSQL_SERVER,
+  server: process.env.MSSQL_HOST,
   database: process.env.MSSQL_DATABASE,
   options: {
     encrypt: false,
@@ -32,4 +32,5 @@ async function connectToSQL() {
 }
 
 module.exports = { connectToSQL, sql }
+
 
