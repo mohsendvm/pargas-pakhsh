@@ -1,39 +1,63 @@
-<<<<<<< HEAD
-const mongoose = require('mongoose');
-require('dotenv').config(); // برای خواندن MONGO_URI از .env در حالت محلی
+// --------------------------------------------------------
+// ✅ config/db.config.js — نسخه نهایی کاملاً سازگار با Render و محیط لوکال
+// --------------------------------------------------------
 
-const connectDB = async () => {
+require('dotenv').config({ path: __dirname + '/../.env' }); // اطمینان از خواندن فایل .env از ریشه پروژه
+
+const sql = require('mssql');
+const mongoose = require('mongoose');
+
+// --------------------------------------------------------
+// ✅ تنظیمات اتصال به MSSQL سپیدار
+// --------------------------------------------------------
+const sqlConfig = {
+  user: process.env.MSSQL_USER,
+  password: process.env.MSSQL_PASSWORD,
+  server: process.env.MSSQL_HOST, // ← اگر سرور سپیدار در localhost یا IP است، همینجا مقدار بده
+  database: process.env.MSSQL_DATABASE,
+  options: {
+    encrypt: false,
+    trustServerCertificate: true,
+    enableArithAbort: true,
+    cryptoCredentialsDetails: { minVersion: 'TLSv1' },
+  },
+};
+
+let pool = null;
+
+const connectToSQL = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true
-    });
-    console.log('🟢 MongoDB Atlas Connected...');
+    if (pool) await pool.connect();
+    else pool = await sql.connect(sqlConfig);
+
+    console.log('✅ MSSQL سپیدار متصل شد');
+    global.sqlConnected = true;
+    return pool;
   } catch (err) {
-    console.error(`🔴 MongoDB Connection Error: ${err.message}`);
-    process.exit(1); // توقف برنامه اگر اتصال برقرار نشد
+    console.error('⚠️ خطا در اتصال MSSQL:', err.message);
+    global.sqlConnected = false;
+    setTimeout(connectToSQL, 5000); // تلاش مجدد خودکار هر ۵ ثانیه
   }
 };
 
-module.exports = connectDB;
-
-=======
-const mongoose = require('mongoose');
-require('dotenv').config(); // برای خواندن MONGO_URI از .env در حالت محلی
-
+// --------------------------------------------------------
+// ✅ تنظیمات اتصال به MongoDB Atlas
+// --------------------------------------------------------
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI, {
+    const conn = await mongoose.connect(process.env.MONGO_URI, {
       useNewUrlParser: true,
-      useUnifiedTopology: true
+      useUnifiedTopology: true,
     });
-    console.log('🟢 MongoDB Atlas Connected...');
+    console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
   } catch (err) {
-    console.error(`🔴 MongoDB Connection Error: ${err.message}`);
-    process.exit(1); // توقف برنامه اگر اتصال برقرار نشد
+    console.error(`❌ خطای اتصال MongoDB: ${err.message}`);
+    process.exit(1); // توقف برنامه اگر Mongo وصل نشود
   }
 };
 
-module.exports = connectDB;
+// --------------------------------------------------------
+// ✅ صادر کردن توابع برای server.js
+// --------------------------------------------------------
+module.exports = { connectToSQL, connectDB, sql };
 
->>>>>>> 8afd6862d69991219988e55d2c13f37d6b125136
