@@ -2,7 +2,7 @@
 // ✅ server.js — نسخه کاملاً اصلاح‌شده برای اجرای بی‌خطا
 // --------------------------------------------------------
 
-require('dotenv').config({ path: __dirname + '/.env' }); // خواندن متغیرهای محیطی مطمئن از مسیر اصلی
+require('dotenv').config(); // خواندن متغیرهای محیطی مطمئن از مسیر اصلی
 
 const express = require('express');
 const cors = require('cors');
