@@ -2,7 +2,7 @@
 // ✅ config/db.config.js — نسخه نهایی کاملاً سازگار با Render و محیط لوکال
 // --------------------------------------------------------
 
-require('dotenv').config({ path: __dirname + '/../.env' }); // اطمینان از خواندن فایل .env از ریشه پروژه
+require('dotenv').config(); // اطمینان از خواندن فایل .env از ریشه پروژه
 
 const sql = require('mssql');
 const mongoose = require('mongoose');
