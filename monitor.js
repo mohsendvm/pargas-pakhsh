@@ -13,7 +13,6 @@ function logEvent(eventType, message) {
   fs.appendFileSync(logFile, entry);
   console.log(entry);
 
-  // 🚨 ارسال ایمیل فقط برای خطاهای FATAL و REJECTION
   if (eventType === 'FATAL' || eventType === 'REJECTION') {
     sendAlertEmail(eventType, message, time);
   }
@@ -23,7 +22,9 @@ function logEvent(eventType, message) {
 async function sendAlertEmail(eventType, message, time) {
   try {
     const transporter = nodemailer.createTransport({
-      service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true, // SSL کاملاً اجباری برای App Password
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
@@ -31,7 +32,7 @@ async function sendAlertEmail(eventType, message, time) {
     });
 
     const mailOptions = {
-      from: `"Pargas Monitoring" <${process.env.EMAIL_USER}>`,
+      from: `"Pargas Monitoring 👑" <${process.env.EMAIL_USER}>`,
       to: process.env.ALERT_RECEIVER,
       subject: `🚨 [${eventType}] Alert from pargas-pakhsh`,
       html: `
@@ -54,7 +55,7 @@ async function sendAlertEmail(eventType, message, time) {
   }
 }
 
-// 🔗 اتصال handlerها
+// 🔗 اتصال هندلرها برای خطاهای سیستم
 process.on('uncaughtException', (err) => {
   logEvent('FATAL', `❌ Uncaught Exception: ${err.message}`);
   console.error(err.stack);
