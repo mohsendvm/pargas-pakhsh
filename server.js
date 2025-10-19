@@ -1,14 +1,14 @@
 // --------------------------------------------------------
-// ✅ server.js — نسخه کاملاً اصلاح‌شده و ضد خطا برای تولید
+// ✅ server.js — نسخه نهایی Production با مسیر وضعیت هوشمند
 // --------------------------------------------------------
 
-require('dotenv').config(); // خواندن متغیرهای محیطی از مسیر اصلی
+require('dotenv').config(); // خواندن متغیرهای محیطی
 
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const fetch = require('node-fetch');
-const { connectDB, connectToSQL } = require('./config/db.config'); // ایمپورت توابع اتصال دیتابیس‌ها
+const { connectDB, connectToSQL } = require('./config/db.config'); // اتصال دیتابیس‌ها
 
 const app = express();
 
@@ -19,25 +19,32 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // --------------------------------------------------------
-// ✅ مسیر تست اصلی
+// ✅ مسیر تست سریع برای اطمینان از اجرا
 // --------------------------------------------------------
 app.get('/', (req, res) => {
-  res.send('✅ Server is running and DB Connected!');
+  res.send('✅ Server is running and databases are connected!');
 });
 
 // --------------------------------------------------------
-// ✅ مسیر بررسی وضعیت اتصال‌ها
+// ✅ مسیر /status — بهینه‌شده برای HealthCheck و مانیتورینگ
 // --------------------------------------------------------
 app.get('/status', (req, res) => {
-  res.json({
-    mongo_status: global.mongoConnected ? '🟢 MongoDB Connected' : '🔴 MongoDB Disconnected',
-    sql_status: global.sqlConnected ? '🟢 MSSQL Connected' : '🔴 MSSQL Disconnected',
-    checked_at: new Date().toLocaleString('fa-IR'),
-  });
+  const systemStatus = {
+    service: "pargas-pakhsh",
+    version: "1.0.0",
+    environment: process.env.NODE_ENV || "production",
+    mongo_status: global.mongoConnected ? "🟢 MongoDB Connected" : "🔴 MongoDB Disconnected",
+    sql_status: global.sqlConnected ? "🟢 MSSQL Connected" : "🔴 MSSQL Disconnected",
+    uptime_seconds: Math.floor(process.uptime()),
+    last_checked: new Date().toISOString(),
+    status_code: 200
+  };
+
+  res.status(200).json(systemStatus);
 });
 
 // --------------------------------------------------------
-// ✅ جلوگیری از Sleep در Render Free
+// ✅ جلوگیری از Sleep در پلن رایگان Render (KeepAlive every 9min)
 // --------------------------------------------------------
 setInterval(async () => {
   try {
@@ -47,10 +54,10 @@ setInterval(async () => {
   } catch (err) {
     console.log('⚠️ Ping failed:', err.message);
   }
-}, 9 * 60 * 1000); // هر ۹ دقیقه یک بار
+}, 9 * 60 * 1000);
 
 // --------------------------------------------------------
-// ✅ مسیرهای API پروژه
+// ✅ مسیرهای API اصلی پروژه
 // --------------------------------------------------------
 const productRoutes = require('./routes/product.routes');
 const orderRoutes = require('./routes/order.routes');
@@ -58,16 +65,16 @@ app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 
 // --------------------------------------------------------
-// ✅ اجرای سرور با اتصال دیتابیس‌ها
+// ✅ تابع اصلی راه‌اندازی سرور و اتصال دیتابیس‌ها
 // --------------------------------------------------------
 const PORT = process.env.PORT || 3000;
 
 const startServer = async () => {
   try {
-    await connectDB(); // اتصال به MongoDB
+    await connectDB(); // اتصال MongoDB
     global.mongoConnected = true;
 
-    await connectToSQL(); // اتصال به MSSQL سپیدار
+    await connectToSQL(); // اتصال MSSQL سپیدار
     global.sqlConnected = true;
 
     app.listen(PORT, () => {
@@ -80,7 +87,7 @@ const startServer = async () => {
   }
 };
 
-// اجرای برنامه اصلی
+// 🚀 اجرای سرور اصلی
 startServer();
 
 // --------------------------------------------------------
