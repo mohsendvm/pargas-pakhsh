@@ -1,14 +1,14 @@
 // --------------------------------------------------------
-// ✅ server.js — نسخه نهایی Production با مسیر وضعیت هوشمند
+// ✅ server.js — نسخه‌ نهایی Production با مانیتورینگ هوشمند
 // --------------------------------------------------------
 
 require('dotenv').config(); // خواندن متغیرهای محیطی
-
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const fetch = require('node-fetch');
 const { connectDB, connectToSQL } = require('./config/db.config'); // اتصال دیتابیس‌ها
+const logEvent = require('./monitor'); // ✨ اتصال فایل مانیتورینگ هوشمند
 
 const app = express();
 
@@ -22,11 +22,12 @@ app.use(bodyParser.json());
 // ✅ مسیر تست سریع برای اطمینان از اجرا
 // --------------------------------------------------------
 app.get('/', (req, res) => {
+  logEvent('ROUTE', 'Root route accessed');
   res.send('✅ Server is running and databases are connected!');
 });
 
 // --------------------------------------------------------
-// ✅ مسیر /status — بهینه‌شده برای HealthCheck و مانیتورینگ
+// ✅ مسیر /status — HealthCheck و مانیتورینگ لحظه‌ای
 // --------------------------------------------------------
 app.get('/status', (req, res) => {
   const systemStatus = {
@@ -40,24 +41,25 @@ app.get('/status', (req, res) => {
     status_code: 200
   };
 
+  logEvent('STATUS', `HealthCheck responded OK — uptime ${systemStatus.uptime_seconds}s`);
   res.status(200).json(systemStatus);
 });
 
 // --------------------------------------------------------
-// ✅ جلوگیری از Sleep در پلن رایگان Render (KeepAlive every 9min)
+// ✅ جلوگیری از Sleep در Render (KeepAlive هر 9 دقیقه)
 // --------------------------------------------------------
 setInterval(async () => {
   try {
     const pingUrl = process.env.PING_URL || 'https://pargas-pakhsh.onrender.com/status';
     const res = await fetch(pingUrl);
-    console.log('⏱️ Ping sent to Render:', res.status);
+    logEvent('PING', `پینگ Render ارسال شد با پاسخ ${res.status}`);
   } catch (err) {
-    console.log('⚠️ Ping failed:', err.message);
+    logEvent('PING', `❌ خطا در پینگ Render — ${err.message}`);
   }
 }, 9 * 60 * 1000);
 
 // --------------------------------------------------------
-// ✅ مسیرهای API اصلی پروژه
+// ✅ مسیرهای API پروژه
 // --------------------------------------------------------
 const productRoutes = require('./routes/product.routes');
 const orderRoutes = require('./routes/order.routes');
@@ -65,7 +67,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
 
 // --------------------------------------------------------
-// ✅ تابع اصلی راه‌اندازی سرور و اتصال دیتابیس‌ها
+// ✅ تابع راه‌اندازی سرور و اتصال دیتابیس‌ها
 // --------------------------------------------------------
 const PORT = process.env.PORT || 3000;
 
@@ -73,14 +75,18 @@ const startServer = async () => {
   try {
     await connectDB(); // اتصال MongoDB
     global.mongoConnected = true;
+    logEvent('DB', '🟢 MongoDB Connected');
 
     await connectToSQL(); // اتصال MSSQL سپیدار
     global.sqlConnected = true;
+    logEvent('DB', '🟢 MSSQL Connected');
 
     app.listen(PORT, () => {
+      logEvent('SERVER', `🟢 Server running on port ${PORT}`);
       console.log(`🟢 Server running on port ${PORT}`);
     });
   } catch (err) {
+    logEvent('FATAL', `❌ خطا در راه‌اندازی سرور — ${err.message}`);
     console.error(`❌ خطا در راه‌اندازی سرور: ${err.message}`);
     global.mongoConnected = false;
     global.sqlConnected = false;
@@ -91,14 +97,15 @@ const startServer = async () => {
 startServer();
 
 // --------------------------------------------------------
-// ✅ Error Handler مرکزی برای ردیابی خطاهای پنهان و Promise
+// ✅ Error Handler مرکزی برای خطاهای ناگهانی و Promise
 // --------------------------------------------------------
 process.on('uncaughtException', (err) => {
-  console.error('❌ Uncaught Exception:', err.message);
-  console.error(err.stack);
+  logEvent('FATAL', `❌ Uncaught Exception: ${err.message}`);
+  console.error('❌ Uncaught Exception:', err.stack);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
+  logEvent('REJECTION', `⚠️ Unhandled Promise Rejection: ${reason}`);
   console.error('⚠️ Unhandled Rejection در Promise:', promise);
   console.error('💬 علت خطا:', reason);
 });
