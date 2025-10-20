@@ -1,4 +1,3 @@
-// monitor.js
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
@@ -24,7 +23,7 @@ async function sendAlertEmail(eventType, message, time) {
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
       port: 465,
-      secure: true, // SSL کاملاً اجباری برای App Password
+      secure: true, // SSL اجباری برای App Password
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
@@ -64,6 +63,9 @@ process.on('uncaughtException', (err) => {
 process.on('unhandledRejection', (err) => {
   logEvent('REJECTION', `⚠️ Unhandled Rejection: ${err.message}`);
 });
+
+// 🧪 تست دستی ایمیل
+logEvent('FATAL', 'Manual test alert – Monitor.js execution confirmed.');
 
 module.exports = logEvent;
 
