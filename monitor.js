@@ -12,6 +12,7 @@ function logEvent(eventType, message) {
   fs.appendFileSync(logFile, entry);
   console.log(entry);
 
+  // فقط در رخداد بحرانی ایمیل هشدار بده
   if (eventType === 'FATAL' || eventType === 'REJECTION') {
     sendAlertEmail(eventType, message, time);
   }
@@ -20,33 +21,35 @@ function logEvent(eventType, message) {
 // ✉️ تابع ارسال ایمیل هشدار
 async function sendAlertEmail(eventType, message, time) {
   try {
+    // ⚙️ تنظیم مطمئن برای اجرای در Render (TLS مستقیم)
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
-      port: 587,
-      secure: false, // SSL بسته است → TLS فعال
+      port: 465,
+      secure: true, // ← حالت SSL امن برای Gmail روی Cloud
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
-      connectionTimeout: 60000,
-      socketTimeout: 60000,
+      connectionTimeout: 20000, // زمان انتظار برای Render
+      socketTimeout: 20000,
       tls: {
-        ciphers: 'TLSv1.2',
-        rejectUnauthorized: false,
+        minVersion: 'TLSv1.2',
+        rejectUnauthorized: false, // جلوگیری از بسته شدن سرتیفیکیت TLS در Render
       },
     });
 
+    // ⚠️ اصلاح بخش قالب HTML و header از نظر quotation
     const mailOptions = {
       from: `"Pargas Monitoring 👑" <${process.env.EMAIL_USER}>`,
       to: process.env.ALERT_RECEIVER,
       subject: `🚨 [${eventType}] Alert from pargas-pakhsh`,
       html: `
-        <div style="font-family:sans-serif;">
+        <div style="font-family:sans-serif; padding:10px;">
           <h2>🚨 System Alert: ${eventType}</h2>
           <p><b>Time:</b> ${time}</p>
           <p><b>Message:</b> ${message}</p>
           <hr>
-          <p>📡 Server: pargas-pakhsh.onrender.com</p>
+          <p>📡 Server: <i>pargas-pakhsh.onrender.com</i></p>
           <p>🧩 MongoDB: ${global.mongoConnected ? '🟢 Connected' : '🔴 Disconnected'}</p>
           <p>🧩 MSSQL: ${global.sqlConnected ? '🟢 Connected' : '🔴 Disconnected'}</p>
         </div>
@@ -57,17 +60,18 @@ async function sendAlertEmail(eventType, message, time) {
     console.log(`📤 Alert Email sent to ${process.env.ALERT_RECEIVER}`);
   } catch (err) {
     console.error('❌ Error sending alert email:', err.message);
+    logEvent('REJECTION', `Email sending failed: ${err.message}`);
   }
 }
 
-// 🔗 هندلرهای خطاهای سیستم
+// 🛡️ هندلرهای خطاهای سیستم
 process.on('uncaughtException', (err) => {
   logEvent('FATAL', `❌ Uncaught Exception: ${err.message}`);
   console.error(err.stack);
 });
 
-process.on('unhandledRejection', (err) => {
-  logEvent('REJECTION', `⚠️ Unhandled Rejection: ${err.message}`);
+process.on('unhandledRejection', (reason) => {
+  logEvent('REJECTION', `⚠️ Unhandled Rejection: ${reason}`);
 });
 
 // 🧪 تست دستی
