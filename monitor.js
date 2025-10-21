@@ -1,66 +1,60 @@
+// ✅ بارگذاری متغیرهای محیطی
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
-const nodemailer = require('nodemailer');
+const fetch = require('node-fetch'); // ← جایگزین nodemailer
 
+// محل ذخیره لاگ‌ها
 const logFile = path.join(__dirname, 'monitor.log');
 
-// 📡 تابع مرکزی ثبت رویداد
+// 📡 تابع ثبت رویداد مرکزی
 function logEvent(eventType, message) {
   const time = new Date().toISOString();
   const entry = `[${time}] [${eventType}] ${message}\n`;
   fs.appendFileSync(logFile, entry);
   console.log(entry);
 
-  // فقط در رخداد بحرانی ایمیل هشدار بده
+  // در رخداد بحرانی ایمیل بفرست
   if (eventType === 'FATAL' || eventType === 'REJECTION') {
     sendAlertEmail(eventType, message, time);
   }
 }
 
-// ✉️ تابع ارسال ایمیل هشدار
+// ✉️ تابع ارسال هشدار از طریق HTTPS Formspree
 async function sendAlertEmail(eventType, message, time) {
   try {
-    // ⚙️ تنظیم مطمئن برای اجرای در Render (TLS مستقیم)
-    const transporter = nodemailer.createTransport({
-      host: 'smtp.gmail.com',
-      port: 465,
-      secure: true, // ← حالت SSL امن برای Gmail روی Cloud
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-      connectionTimeout: 20000, // زمان انتظار برای Render
-      socketTimeout: 20000,
-      tls: {
-        minVersion: 'TLSv1.2',
-        rejectUnauthorized: false, // جلوگیری از بسته شدن سرتیفیکیت TLS در Render
-      },
-    });
+    // آدرس فرم Formspree شخصی — در مرحله بعد خواهیم ساخت 👇
+    const FORM_ENDPOINT = process.env.ALERT_ENDPOINT;
 
-    // ⚠️ اصلاح بخش قالب HTML و header از نظر quotation
-    const mailOptions = {
-      from: `"Pargas Monitoring 👑" <${process.env.EMAIL_USER}>`,
-      to: process.env.ALERT_RECEIVER,
-      subject: `🚨 [${eventType}] Alert from pargas-pakhsh`,
-      html: `
-        <div style="font-family:sans-serif; padding:10px;">
+    const payload = {
+      email: process.env.ALERT_RECEIVER,
+      subject: `🚨 [${eventType}] Pargas Alert`,
+      message: `
+        <div style="font-family:sans-serif;">
           <h2>🚨 System Alert: ${eventType}</h2>
           <p><b>Time:</b> ${time}</p>
           <p><b>Message:</b> ${message}</p>
           <hr>
-          <p>📡 Server: <i>pargas-pakhsh.onrender.com</i></p>
+          <p>📡 Render Server: pargas-pakhsh.onrender.com</p>
           <p>🧩 MongoDB: ${global.mongoConnected ? '🟢 Connected' : '🔴 Disconnected'}</p>
           <p>🧩 MSSQL: ${global.sqlConnected ? '🟢 Connected' : '🔴 Disconnected'}</p>
         </div>
       `,
     };
 
-    await transporter.sendMail(mailOptions);
-    console.log(`📤 Alert Email sent to ${process.env.ALERT_RECEIVER}`);
+    const res = await fetch(FORM_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.ok) {
+      console.log(`📤 Alert Email sent successfully via Formspree`);
+    } else {
+      console.error(`❌ Formspree response not OK: ${res.statusText}`);
+    }
   } catch (err) {
-    console.error('❌ Error sending alert email:', err.message);
-    logEvent('REJECTION', `Email sending failed: ${err.message}`);
+    console.error('❌ Fetch error sending alert:', err.message);
   }
 }
 
@@ -74,7 +68,7 @@ process.on('unhandledRejection', (reason) => {
   logEvent('REJECTION', `⚠️ Unhandled Rejection: ${reason}`);
 });
 
-// 🧪 تست دستی
+// 🧪 تست
 setTimeout(() => {
   logEvent('FATAL', 'Manual test alert – Monitor.js execution confirmed.');
 }, 3000);
