@@ -1,77 +1,68 @@
-// ✅ بارگذاری متغیرهای محیطی
-require('dotenv').config();
-const fs = require('fs');
-const path = require('path');
-const fetch = require('node-fetch'); // ← جایگزین nodemailer
+   // 📦 فایل monitor.js نسخه HTTPS پایدار برای Render Cloud
+   require('dotenv').config();
+   const fs = require('fs');
+   const path = require('path');
+   const fetch = require('node-fetch');
 
-// محل ذخیره لاگ‌ها
-const logFile = path.join(__dirname, 'monitor.log');
+   const logFile = path.join(__dirname, 'monitor.log');
 
-// 📡 تابع ثبت رویداد مرکزی
-function logEvent(eventType, message) {
-  const time = new Date().toISOString();
-  const entry = `[${time}] [${eventType}] ${message}\n`;
-  fs.appendFileSync(logFile, entry);
-  console.log(entry);
+   // 🧭 تابع ثبت رویدادها
+   function logEvent(eventType, message) {
+       const time = new Date().toISOString();
+       const entry = `[${time}] [${eventType}] ${message}\n`;
 
-  // در رخداد بحرانی ایمیل بفرست
-  if (eventType === 'FATAL' || eventType === 'REJECTION') {
-    sendAlertEmail(eventType, message, time);
-  }
-}
+       fs.appendFileSync(logFile, entry);
+       console.log(entry);
 
-// ✉️ تابع ارسال هشدار از طریق HTTPS Formspree
-async function sendAlertEmail(eventType, message, time) {
-  try {
-    // آدرس فرم Formspree شخصی — در مرحله بعد خواهیم ساخت 👇
-    const FORM_ENDPOINT = process.env.ALERT_ENDPOINT;
+       // فقط در رخداد بحرانی بفرست هشدار
+       if (eventType === 'FATAL' || eventType === 'REJECTION') {
+           sendAlert(eventType, message, time);
+       }
+   }
 
-    const payload = {
-      email: process.env.ALERT_RECEIVER,
-      subject: `🚨 [${eventType}] Pargas Alert`,
-      message: `
-        <div style="font-family:sans-serif;">
-          <h2>🚨 System Alert: ${eventType}</h2>
-          <p><b>Time:</b> ${time}</p>
-          <p><b>Message:</b> ${message}</p>
-          <hr>
-          <p>📡 Render Server: pargas-pakhsh.onrender.com</p>
-          <p>🧩 MongoDB: ${global.mongoConnected ? '🟢 Connected' : '🔴 Disconnected'}</p>
-          <p>🧩 MSSQL: ${global.sqlConnected ? '🟢 Connected' : '🔴 Disconnected'}</p>
-        </div>
-      `,
-    };
+   // 🚨 تابع ارسال هشدار از طریق Formspree
+   async function sendAlert(eventType, message, time) {
+       try {
+           const response = await fetch(process.env.ALERT_ENDPOINT, {
+               method: 'POST',
+               headers: {
+                   'Content-Type': 'application/json'
+               },
+               body: JSON.stringify({
+                   _subject: `🚨 [${eventType}] Alert from pargas-pakhsh`,
+                   message: `
+                       نوع رخداد: ${eventType}
+                       زمان: ${time}
+                       پیام: ${message}
+                       سرور: pargas-pakhsh.onrender.com
+                   `
+               })
+           });
 
-    const res = await fetch(FORM_ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
+           if (response.ok) {
+               console.log('📤 Alert Email sent successfully via Formspree');
+           } else {
+               console.error(`❌ Formspree Error (${response.status}): ${response.statusText}`);
+           }
+       } catch (err) {
+           console.error('❌ HTTPS Alert Failed:', err.message);
+           fs.appendFileSync(logFile, `[${new Date().toISOString()}] [FAIL] ${err.message}\n`);
+       }
+   }
 
-    if (res.ok) {
-      console.log(`📤 Alert Email sent successfully via Formspree`);
-    } else {
-      console.error(`❌ Formspree response not OK: ${res.statusText}`);
-    }
-  } catch (err) {
-    console.error('❌ Fetch error sending alert:', err.message);
-  }
-}
+   // 🛡️ هندلرهای خطا
+   process.on('uncaughtException', err => {
+       logEvent('FATAL', `❌ Uncaught Exception: ${err.message}`);
+   });
 
-// 🛡️ هندلرهای خطاهای سیستم
-process.on('uncaughtException', (err) => {
-  logEvent('FATAL', `❌ Uncaught Exception: ${err.message}`);
-  console.error(err.stack);
-});
+   process.on('unhandledRejection', reason => {
+       logEvent('REJECTION', `⚠️ Unhandled Rejection: ${reason}`);
+   });
 
-process.on('unhandledRejection', (reason) => {
-  logEvent('REJECTION', `⚠️ Unhandled Rejection: ${reason}`);
-});
+   // 🧪 تست اولیه
+   setTimeout(() => {
+       logEvent('FATAL', 'Manual test alert – Monitor.js HTTPS confirmed.');
+   }, 3000);
 
-// 🧪 تست
-setTimeout(() => {
-  logEvent('FATAL', 'Manual test alert – Monitor.js execution confirmed.');
-}, 3000);
-
-module.exports = logEvent;
+   module.exports = logEvent;
 
