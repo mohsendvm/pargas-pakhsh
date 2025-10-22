@@ -1,4 +1,4 @@
-// 📦 Monitor.js نسخه HTTPS Production برای Render Cloud
+// 📦 Monitor.js — نسخه HTTPS Production برای Render Cloud
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
@@ -10,7 +10,7 @@ const logFile = path.join(__dirname, 'monitor.log');
 // 🧭 تابع ثبت رویدادها
 function logEvent(eventType, message) {
     const time = new Date().toISOString();
-    const entry = `[${time}] [${eventType}] ${message}\n`;
+    const entry = `[${time}] [${eventType}] ${message}\n`;   // ✅ اصلاح سینتکس Template String
 
     fs.appendFileSync(logFile, entry);
     console.log(entry);
@@ -29,13 +29,16 @@ async function sendAlert(eventType, message, time) {
     if (!endpoint || !endpoint.startsWith('https://')) {
         const errMsg = '⚠️ ALERT_ENDPOINT missing or invalid!';
         console.error(errMsg);
-        fs.appendFileSync(logFile, `[${new Date().toISOString()}] [CONFIG] ${errMsg}\n`);
+        fs.appendFileSync(
+            logFile,
+            `[${new Date().toISOString()}] [CONFIG] ${errMsg}\n`
+        );
         return;
     }
 
     // 📤 Payload ساخت‌یافته برای ارسال به Formspree
     const payload = {
-        _subject: `🚨 [${eventType}] Alert from pargas-pakhsh`,
+        _subject: `🚨 [${eventType}] Alert from pargas-pakhsh`,  // ✅ افزودن علامت quote درست
         message: `
         نوع رخداد: ${eventType}
         زمان: ${time}
@@ -60,21 +63,34 @@ async function sendAlert(eventType, message, time) {
             clearTimeout(timeout);
 
             if (response.ok) {
-                console.log(`📤 Alert Email sent successfully via Formspree [Attempt ${attempt}]`);
-                fs.appendFileSync(logFile, `[${new Date().toISOString()}] [SUCCESS] Formspree OK\n`);
+                console.log(
+                    `📤 Alert Email sent successfully via Formspree [Attempt ${attempt}]`
+                );
+                fs.appendFileSync(
+                    logFile,
+                    `[${new Date().toISOString()}] [SUCCESS] Formspree OK\n`
+                );
                 return;
             } else {
-                console.error(`❌ Formspree Error (${response.status}): ${response.statusText}`);
+                console.error(
+                    `❌ Formspree Error (${response.status}): ${response.statusText}`
+                );
             }
         } catch (err) {
             console.error(`🔁 Attempt ${attempt} failed – ${err.message}`);
-            fs.appendFileSync(logFile, `[${new Date().toISOString()}] [RETRY-${attempt}] ${err.message}\n`);
+            fs.appendFileSync(
+                logFile,
+                `[${new Date().toISOString()}] [RETRY-${attempt}] ${err.message}\n`
+            );
             if (attempt < 3) await new Promise(r => setTimeout(r, 2000));
         }
     }
 
     console.error('❌ HTTPS Alert Failed after 3 retries.');
-    fs.appendFileSync(logFile, `[${new Date().toISOString()}] [FAIL] Formspree unreachable\n`);
+    fs.appendFileSync(
+        logFile,
+        `[${new Date().toISOString()}] [FAIL] Formspree unreachable\n`
+    );
 }
 
 // 🛡️ هندلرهای خطا
@@ -100,14 +116,20 @@ cron.schedule('59 23 * * *', () => {
 
     if (fs.existsSync(logFile)) {
         fs.renameSync(logFile, archivePath);
-        fs.writeFileSync(logFile, `🧩 Log reset at midnight (${dateTag})\n`);
+        fs.writeFileSync(
+            logFile,
+            `🧩 Log reset at midnight (${dateTag})\n`
+        );
         console.log(`♻️ Log rotated → ${archivePath}`);
     }
 });
 
 // 🚦 وضعیت شروع سیستم در لاگ و کنسول
 console.log(`✅ Render Formspree Relay Active [${new Date().toISOString()}]`);
-fs.appendFileSync(logFile, `[${new Date().toISOString()}] [INIT] Formspree Relay Active\n`);
+fs.appendFileSync(
+    logFile,
+    `[${new Date().toISOString()}] [INIT] Formspree Relay Active\n`
+);
 
 // 🧪 تست اولیه دستی در Boot
 setTimeout(() => {
