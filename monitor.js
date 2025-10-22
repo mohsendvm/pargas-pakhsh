@@ -3,6 +3,7 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const fetch = require('node-fetch');
+const cron = require('node-cron'); // برای زمان‌بندی چرخش لاگ‌ها
 
 const logFile = path.join(__dirname, 'monitor.log');
 
@@ -14,7 +15,7 @@ function logEvent(eventType, message) {
     fs.appendFileSync(logFile, entry);
     console.log(entry);
 
-    // فقط در رخداد بحرانی هشدار بده
+    // فقط در رخدادهای بحرانی هشدار بده
     if (eventType === 'FATAL' || eventType === 'REJECTION') {
         sendAlert(eventType, message, time);
     }
@@ -22,8 +23,9 @@ function logEvent(eventType, message) {
 
 // 🚨 تابع ارسال هشدار از طریق Formspree
 async function sendAlert(eventType, message, time) {
-    // 🧩 بررسی اولیه – وجود متغیر محیطی
     const endpoint = process.env.ALERT_ENDPOINT;
+
+    // 🧩 بررسی اولیه – صحت متغیر محیطی
     if (!endpoint || !endpoint.startsWith('https://')) {
         const errMsg = '⚠️ ALERT_ENDPOINT missing or invalid!';
         console.error(errMsg);
@@ -31,26 +33,31 @@ async function sendAlert(eventType, message, time) {
         return;
     }
 
-    // 🧩 Payload آماده و تمیز
+    // 📤 Payload ساخت‌یافته برای ارسال به Formspree
     const payload = {
         _subject: `🚨 [${eventType}] Alert from pargas-pakhsh`,
         message: `
-            نوع رخداد: ${eventType}
-            زمان: ${time}
-            پیام: ${message}
-            سرور: pargas-pakhsh.onrender.com
+        نوع رخداد: ${eventType}
+        زمان: ${time}
+        پیام: ${message}
+        سرور: pargas-pakhsh.onrender.com
         `
     };
 
-    // 🧱 لایه‌ی مقاومت شبکه‌ای (Retry هوشمند)
+    // 🧱 تلاش‌های چندمرحله‌ای (Retry تا 3 بار)
     for (let attempt = 1; attempt <= 3; attempt++) {
         try {
+            const controller = new AbortController();
+            const timeout = setTimeout(() => controller.abort(), 20000);
+
             const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(payload),
-                timeout: 20000 // جلوگیری از Freeze در Render
+                signal: controller.signal
             });
+
+            clearTimeout(timeout);
 
             if (response.ok) {
                 console.log(`📤 Alert Email sent successfully via Formspree [Attempt ${attempt}]`);
@@ -62,11 +69,10 @@ async function sendAlert(eventType, message, time) {
         } catch (err) {
             console.error(`🔁 Attempt ${attempt} failed – ${err.message}`);
             fs.appendFileSync(logFile, `[${new Date().toISOString()}] [RETRY-${attempt}] ${err.message}\n`);
-            if (attempt < 3) await new Promise(r => setTimeout(r, 2000)); // مکث بین تلاش‌ها
+            if (attempt < 3) await new Promise(r => setTimeout(r, 2000));
         }
     }
 
-    // اگر هیچ تلاشی موفق نبود:
     console.error('❌ HTTPS Alert Failed after 3 retries.');
     fs.appendFileSync(logFile, `[${new Date().toISOString()}] [FAIL] Formspree unreachable\n`);
 }
@@ -81,10 +87,29 @@ process.on('unhandledRejection', reason => {
     logEvent('REJECTION', `⚠️ Unhandled Rejection: ${reason}`);
 });
 
-// 🚦 درج وضعیت فعال سیستم در لاگ هنگام استارت
-console.log(`✅ Render Formspree Relay Active [${new Date().toISOString()}]`);
+// ♻️ زمان‌بندی برای چرخش لاگ‌ها هر شب 23:59 UTC
+cron.schedule('59 23 * * *', () => {
+    const dateTag = new Date().toISOString().split('T')[0];
+    const archiveDir = path.join(__dirname, 'logs');
+    const archivePath = path.join(archiveDir, `archive-${dateTag}.log`);
 
-// 🧪 تست اولیه دستی
+    // اطمینان از وجود پوشه logs
+    if (!fs.existsSync(archiveDir)) {
+        fs.mkdirSync(archiveDir);
+    }
+
+    if (fs.existsSync(logFile)) {
+        fs.renameSync(logFile, archivePath);
+        fs.writeFileSync(logFile, `🧩 Log reset at midnight (${dateTag})\n`);
+        console.log(`♻️ Log rotated → ${archivePath}`);
+    }
+});
+
+// 🚦 وضعیت شروع سیستم در لاگ و کنسول
+console.log(`✅ Render Formspree Relay Active [${new Date().toISOString()}]`);
+fs.appendFileSync(logFile, `[${new Date().toISOString()}] [INIT] Formspree Relay Active\n`);
+
+// 🧪 تست اولیه دستی در Boot
 setTimeout(() => {
     logEvent('FATAL', 'Manual test alert – Monitor.js HTTPS confirmed.');
 }, 3000);
