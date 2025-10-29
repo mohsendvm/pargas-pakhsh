@@ -1,141 +1,101 @@
-// 📦 Monitor.js — نسخه HTTPS Production برای Render Cloud
-require('dotenv').config();
-const fs = require('fs');
-const path = require('path');
-const fetch = require('node-fetch');
-const cron = require('node-cron'); // برای زمان‌بندی چرخش لاگ‌ها
+// --------------------------------------------------------
+// ✅ monitor.js — نسخه نهایی HTTPS + ESM برای مرحله Production
+// --------------------------------------------------------
+import fs from 'fs';
+import path from 'path';
+import dotenv from 'dotenv';
+dotenv.config();
 
-const logFile = path.join(__dirname, 'monitor.log');
+const logFile = path.join(process.cwd(), 'monitor.log');
 
-// 🧭 تابع ثبت رویدادها
-function logEvent(eventType, message) {
-    const time = new Date().toISOString();
-    const entry = `[${time}] [${eventType}] ${message}\n`;   // ✅ اصلاح سینتکس Template String
+// 🧭 ثبت رویدادها (هوشمند و سطح‌دار)
+export function logEvent(eventType, message) {
+  const time = new Date().toISOString();
+  const entry = `[${time}] [${eventType}] ${message}\n`;
+  fs.appendFileSync(logFile, entry, 'utf8');
+  console.log(entry.trim());
 
-    fs.appendFileSync(logFile, entry);
-    console.log(entry);
-
-    // فقط در رخدادهای بحرانی هشدار بده
-    if (eventType === 'FATAL' || eventType === 'REJECTION') {
-        sendAlert(eventType, message, time);
-    }
+  // رخداد حیاتی → هشدار HTTPS
+  if (['FATAL', 'REJECTION', 'SECURITY'].includes(eventType)) {
+    sendAlert(eventType, message, time);
+  }
 }
 
-// 🚨 تابع ارسال هشدار از طریق Formspree
-async function sendAlert(eventType, message, time) {
-    const endpoint = process.env.ALERT_ENDPOINT;
+// 🚨 تابع ارسال هشدار به Formspree یا وب‌هوک سفارشی
+export async function sendAlert(eventType, message, time) {
+  const endpoint = process.env.ALERT_ENDPOINT;
 
-    // 🧩 بررسی اولیه – صحت متغیر محیطی
-    if (!endpoint || !endpoint.startsWith('https://')) {
-        const errMsg = '⚠️ ALERT_ENDPOINT missing or invalid!';
-        console.error(errMsg);
-        fs.appendFileSync(
-            logFile,
-            `[${new Date().toISOString()}] [CONFIG] ${errMsg}\n`
-        );
-        return;
-    }
-
-    // 📤 Payload ساخت‌یافته برای ارسال به Formspree
-    const payload = {
-        _subject: `🚨 [${eventType}] Alert from pargas-pakhsh`,  // ✅ افزودن علامت quote درست
-        message: `
-        نوع رخداد: ${eventType}
-        زمان: ${time}
-        پیام: ${message}
-        سرور: pargas-pakhsh.onrender.com
-        `
-    };
-
-    // 🧱 تلاش‌های چندمرحله‌ای (Retry تا 3 بار)
-    for (let attempt = 1; attempt <= 3; attempt++) {
-        try {
-            const controller = new AbortController();
-            const timeout = setTimeout(() => controller.abort(), 45000);
-
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload),
-                signal: controller.signal
-            });
-
-            clearTimeout(timeout);
-
-            if (response.ok) {
-                console.log(
-                    `📤 Alert Email sent successfully via Formspree [Attempt ${attempt}]`
-                );
-                fs.appendFileSync(
-                    logFile,
-                    `[${new Date().toISOString()}] [SUCCESS] Formspree OK\n`
-                );
-                return;
-            } else {
-                console.error(
-                    `❌ Formspree Error (${response.status}): ${response.statusText}`
-                );
-            }
-        } catch (err) {
-            console.error(`🔁 Attempt ${attempt} failed – ${err.message}`);
-            fs.appendFileSync(
-                logFile,
-                `[${new Date().toISOString()}] [RETRY-${attempt}] ${err.message}\n`
-            );
-            if (attempt < 3) await new Promise(r => setTimeout(r, 2000));
-        }
-    }
-
-    console.error('❌ HTTPS Alert Failed after 3 retries.');
+  if (!endpoint || !endpoint.startsWith('https://')) {
+    const errMsg = '⚠️ ALERT_ENDPOINT missing or invalid!';
     fs.appendFileSync(
-        logFile,
-        `[${new Date().toISOString()}] [FAIL] Formspree unreachable\n`
+      logFile,
+      `[${new Date().toISOString()}] [CONFIG] ${errMsg}\n`,
+      'utf8'
     );
+    console.error(errMsg);
+    return;
+  }
+
+  const payload = {
+    _subject: `🚨 [${eventType}] Alert from Pargas-Pakhsh`,
+    message: `
+نوع رخداد: ${eventType}
+زمان: ${time}
+پیام: ${message}
+سرور: pargas-pakhsh.onrender.com
+    `,
+  };
+
+  // تلاش با حداکثر ۳ Retry در ۴۵ ثانیه
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 45000);
+
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
+      if (response.ok) {
+        fs.appendFileSync(
+          logFile,
+          `[${new Date().toISOString()}] [SUCCESS] Formspree OK\n`,
+          'utf8'
+        );
+        console.log(`📤 Alert Email sent via Formspree (try ${attempt})`);
+        return;
+      } else {
+        console.error(`❌ Formspree Error (${response.status})`);
+      }
+    } catch (err) {
+      fs.appendFileSync(
+        logFile,
+        `[${new Date().toISOString()}] [RETRY-${attempt}] ${err.message}\n`,
+        'utf8'
+      );
+      console.error(`🔁 Attempt ${attempt} failed: ${err.message}`);
+      if (attempt < 3) await new Promise(r => setTimeout(r, 2000));
+    }
+  }
+
+  fs.appendFileSync(
+    logFile,
+    `[${new Date().toISOString()}] [FAIL] Formspree unreachable\n`,
+    'utf8'
+  );
+  console.error('❌ HTTPS Alert Failed after 3 retries.');
 }
 
-// 🛡️ هندلرهای خطا
+// 🛡️ ثبت خطاهای global برای اطمینان از محیط Production:
 process.on('uncaughtException', err => {
-    logEvent('FATAL', `❌ Uncaught Exception: ${err.message}`);
-    console.error(err.stack);
+  logEvent('FATAL', `Uncaught Exception: ${err.message}`);
 });
-
 process.on('unhandledRejection', reason => {
-    logEvent('REJECTION', `⚠️ Unhandled Rejection: ${reason}`);
+  logEvent('REJECTION', `Unhandled Promise Rejection: ${reason}`);
 });
-
-// ♻️ زمان‌بندی برای چرخش لاگ‌ها هر شب 23:59 UTC
-cron.schedule('59 23 * * *', () => {
-    const dateTag = new Date().toISOString().split('T')[0];
-    const archiveDir = path.join(__dirname, 'logs');
-    const archivePath = path.join(archiveDir, `archive-${dateTag}.log`);
-
-    // اطمینان از وجود پوشه logs
-    if (!fs.existsSync(archiveDir)) {
-        fs.mkdirSync(archiveDir);
-    }
-
-    if (fs.existsSync(logFile)) {
-        fs.renameSync(logFile, archivePath);
-        fs.writeFileSync(
-            logFile,
-            `🧩 Log reset at midnight (${dateTag})\n`
-        );
-        console.log(`♻️ Log rotated → ${archivePath}`);
-    }
-});
-
-// 🚦 وضعیت شروع سیستم در لاگ و کنسول
-console.log(`✅ Render Formspree Relay Active [${new Date().toISOString()}]`);
-fs.appendFileSync(
-    logFile,
-    `[${new Date().toISOString()}] [INIT] Formspree Relay Active\n`
-);
-
-// 🧪 تست اولیه دستی در Boot
-setTimeout(() => {
-    logEvent('FATAL', 'Manual test alert – Monitor.js HTTPS confirmed.');
-}, 3000);
-
-module.exports = logEvent;
-
+console.log('🧠 Monitor.js فعال شد (HTTPS Alert Mode)');
 
