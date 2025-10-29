@@ -1,186 +1,152 @@
-// --------------------------------------------------------
-// ✅ server.js — نسخه‌ نهایی Production با مانیتورینگ هوشمند + Stage 2.3
-// --------------------------------------------------------
+// ------------------------------------------------------------
+// ✅ server.js — نسخه نهایی Stage 4 AI + Security + Monitoring
+// ------------------------------------------------------------
+import dotenv from 'dotenv';
+import express from 'express';
+import cors from 'cors';
+import bodyParser from 'body-parser';
+import fs from 'fs';
+import path from 'path';
+import sql from 'mssql';
+import fetch from 'node-fetch';
+import { connectDB, connectToSQL } from './config/db.config.js';
+import { logEvent } from './monitor.js';
+import { recommend } from './ai/recommender.js';
 
-require('dotenv').config(); // خواندن متغیرهای محیطی
-const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
-const fetch = require('node-fetch');
-const fs = require('fs');
-const path = require('path');
-
-const { connectDB, connectToSQL } = require('./config/db.config'); // اتصال دیتابیس‌ها
-const logEvent = require('./monitor'); // ✨ اتصال فایل مانیتورینگ
-
+dotenv.config();
 const app = express();
+const PORT = process.env.PORT || 3000;
 
-// --------------------------------------------------------
-// ✅ تنظیمات پایه
-// --------------------------------------------------------
 app.use(cors());
 app.use(bodyParser.json());
 
-// --------------------------------------------------------
-// ✅ مسیر / — تست سلامت سرور
-// --------------------------------------------------------
+// ✅ صفحه ریشه
 app.get('/', (req, res) => {
   logEvent('ROUTE', 'Root route accessed');
-  res.send('✅ Server is running and databases are connected!');
+  res.send('✅ Pargas server running successfully!');
 });
 
-// --------------------------------------------------------
-// ✅ مسیر /status — HealthCheck لحظه‌ای
-// --------------------------------------------------------
+// ✅ HealthCheck
 app.get('/status', (req, res) => {
   const systemStatus = {
     service: 'pargas-pakhsh',
-    version: '1.1.1',
-    environment: process.env.NODE_ENV || 'production',
-    mongo_status: global.mongoConnected
-      ? '🟢 MongoDB Connected'
-      : '🔴 MongoDB Disconnected',
-    sql_status: global.sqlConnected
-      ? '🟢 MSSQL Connected'
-      : '🔴 MSSQL Disconnected',
+    version: '1.2.0',
+    mongo_status: global.mongoConnected ? '🟢 Mongo Connected' : '🔴 Mongo Disconnected',
+    sql_status: global.sqlConnected ? '🟢 MSSQL Connected' : '🔴 MSSQL Disconnected',
     uptime_seconds: Math.floor(process.uptime()),
     last_checked: new Date().toISOString(),
-    status_code: 200,
+    sql_server: process.env.MSSQL_HOST,
+    sql_db: process.env.MSSQL_DATABASE,
   };
-
-  logEvent('STATUS', `HealthCheck responded OK — uptime ${systemStatus.uptime_seconds}s`);
+  logEvent('STATUS', `HealthCheck OK — uptime ${systemStatus.uptime_seconds}s`);
   res.status(200).json(systemStatus);
 });
 
-// --------------------------------------------------------
-// ✅ مسیر /monitor-log — مشاهده لاگ اصلی در مرورگر (Stage 2.2)
-// --------------------------------------------------------
+// ✅ مشاهده لاگ‌ها
 app.get('/monitor-log', (req, res) => {
   try {
-    const logPath = path.join(__dirname, 'monitor.log');
-    const logs = fs.existsSync(logPath)
-      ? fs.readFileSync(logPath, 'utf8')
-      : '📂 No log file found';
-
+    const logPath = path.join(process.cwd(), 'monitor.log');
+    const logs = fs.existsSync(logPath) ? fs.readFileSync(logPath, 'utf8') : '📂 No log file found';
     res.send(`
-      <html>
-        <head><title>Pargas Monitor Log</title></head>
-        <body style="font-family: monospace; background-color: #111; color: #0f0;">
-          <h2>📜 System Monitor Log</h2>
-          <pre>${logs}</pre>
-        </body>
-      </html>`);
+      <html><body style="background:#111;color:#0f0;font-family:monospace">
+      <h2>📜 System Monitor Log</h2><pre>${logs}</pre>
+      </body></html>
+    `);
   } catch (err) {
     res.status(500).send(`❌ Error reading logs: ${err.message}`);
   }
 });
 
-// --------------------------------------------------------
-// ✅ مسیرهای Stage 2.3 — نمایش آرشیوهای لاگ‌ها
-// --------------------------------------------------------
-app.get('/monitor-archive', (req, res) => {
+// ✅ امنیت SQL
+app.get('/whoami', async (req, res) => {
   try {
-    const archiveDir = path.join(__dirname, 'logs');
-    if (!fs.existsSync(archiveDir)) {
-      return res.send('📂 No archives folder found');
+    const result = await sql.query`SELECT SYSTEM_USER AS SqlLogin, ORIGINAL_LOGIN() AS OriginalLogin`;
+    const login = result.recordset[0];
+    if (login.SqlLogin.toLowerCase() === 'sa') {
+      logEvent('SECURITY', '⚠️ هشدار: اتصال با کاربر "sa" انجام شده است!');
+    } else {
+      logEvent('SECURITY', `✅ اتصال امن با کاربر "${login.SqlLogin}"`);
     }
-
-    const files = fs.readdirSync(archiveDir)
-      .filter(f => f.endsWith('.log'))
-      .sort()
-      .map(f => `<li><a href="/monitor-archive/${f}" target="_blank">${f}</a></li>`)
-      .join('');
-
-    res.send(`
-      <html>
-        <head><title>Pargas Monitor Archives</title></head>
-        <body style="font-family: monospace; background-color:#111; color:#0f0;">
-          <h2>📜 Archived Monitor Logs</h2>
-          <ul>${files || '<li>No archived logs yet</li>'}</ul>
-        </body>
-      </html>`);
+    res.json(login);
   } catch (err) {
-    res.status(500).send(`❌ Error reading archives: ${err.message}`);
+    logEvent('SECURITY', `❌ خطا در /whoami — ${err.message}`);
+    res.status(500).json({ error: err.message });
   }
 });
 
-app.get('/monitor-archive/:filename', (req, res) => {
-  const archiveDir = path.join(__dirname, 'logs');
-  const filePath = path.join(archiveDir, req.params.filename);
-
-  if (!fs.existsSync(filePath)) {
-    return res.status(404).send('❌ File not found');
-  }
-
+// ✅ Stage 4 — موتور هوش مصنوعی
+app.get('/api/recommendations/:id', async (req, res) => {
   try {
-    res.type('text/plain').send(fs.readFileSync(filePath, 'utf8'));
+    const config = {
+      user: process.env.MSSQL_USER,
+      password: process.env.MSSQL_PASSWORD,
+      server: process.env.MSSQL_HOST,
+      database: process.env.MSSQL_DATABASE,
+      options: { encrypt: false, trustServerCertificate: true },
+    };
+    const pool = await sql.connect(config);
+    const query = `
+      SELECT TOP (200)
+      I.ItemID, I.Title, I.ItemCategoryTitle AS Category,
+      ISNULL(S.Quantity,0) AS StockQty,
+      ISNULL(P.Price,0) AS SalePrice
+      FROM INV.vwItem AS I
+      LEFT JOIN INV.vwItemStockSummary AS S ON I.ItemID = S.ItemRef
+      LEFT JOIN INV.vwProducedItemPrice AS P ON I.ItemID = P.ItemRef
+      ORDER BY I.Code;
+    `;
+    const result = await pool.request().query(query);
+    const products = result.recordset;
+    const userHistory = [];
+    const recommendations = await recommend(products, userHistory);
+    logEvent('AI', `✅ Recommendations generated (${recommendations.length})`);
+    res.json({ ok: true, recommendations });
   } catch (err) {
-    res.status(500).send(`❌ Error reading file: ${err.message}`);
+    logEvent('AI', `❌ Error generating recommendations — ${err.message}`);
+    res.status(500).json({ error: err.message });
   }
 });
 
-// --------------------------------------------------------
-// ✅ جلوگیری از Sleep در Render (KeepAlive هر ۹ دقیقه)
-// --------------------------------------------------------
+// 🔄 جلوگیری از Sleep در Render
 setInterval(async () => {
   try {
     const pingUrl = process.env.PING_URL || 'https://pargas-pakhsh.onrender.com/status';
     const res = await fetch(pingUrl);
-    logEvent('PING', `پینگ Render ارسال شد با پاسخ ${res.status}`);
+    logEvent('PING', `✅ Ping Render (${res.status})`);
   } catch (err) {
-    logEvent('PING', `❌ خطا در پینگ Render — ${err.message}`);
+    logEvent('PING', `❌ Error in Render ping — ${err.message}`);
   }
 }, 9 * 60 * 1000);
 
-// --------------------------------------------------------
-// ✅ مسیرهای API اصلی پروژه
-// --------------------------------------------------------
-const productRoutes = require('./routes/product.routes');
-const orderRoutes = require('./routes/order.routes');
-app.use('/api/products', productRoutes);
-app.use('/api/orders', orderRoutes);
-
-// --------------------------------------------------------
-// ✅ راه‌اندازی سرور و اتصال دیتابیس‌ها
-// --------------------------------------------------------
-const PORT = process.env.PORT || 3000;
-
+// 🚀 راه‌اندازی نهایی سرور
 const startServer = async () => {
   try {
     await connectDB();
     global.mongoConnected = true;
     logEvent('DB', '🟢 MongoDB Connected');
-
     await connectToSQL();
     global.sqlConnected = true;
     logEvent('DB', '🟢 MSSQL Connected');
-
     app.listen(PORT, () => {
-      logEvent('SERVER', `🟢 Server running on port ${PORT}`);
+      logEvent('SERVER', `✅ Server running on port ${PORT}`);
       console.log(`🟢 Server running on port ${PORT}`);
     });
   } catch (err) {
     logEvent('FATAL', `❌ خطا در راه‌اندازی سرور — ${err.message}`);
-    console.error(`❌ خطا در راه‌اندازی سرور: ${err.message}`);
-    global.mongoConnected = false;
-    global.sqlConnected = false;
+    console.error(err);
   }
 };
 
-// 🚀 اجرای سرور اصلی
 startServer();
 
-// --------------------------------------------------------
-// ✅ Error Handler مرکزی
-// --------------------------------------------------------
-process.on('uncaughtException', (err) => {
+// 🧠 هندلرهای خطا
+process.on('uncaughtException', err => {
   logEvent('FATAL', `❌ Uncaught Exception: ${err.message}`);
-  console.error('❌ Uncaught Exception:', err.stack);
+  console.error(err);
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-  logEvent('REJECTION', `⚠️ Unhandled Promise Rejection: ${reason}`);
-  console.error('⚠️ Unhandled Rejection در Promise:', promise);
-  console.error('💬 علت خطا:', reason);
+process.on('unhandledRejection', reason => {
+  logEvent('REJECTION', `⚠️ Unhandled Rejection: ${reason}`);
+  console.error(reason);
 });
 
